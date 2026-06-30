@@ -66,6 +66,9 @@ def _load_transcripts(
     # Filter z-plane first (cheap before transform)
     df = df[np.round(df["global_z"]).clip(0, Z_PLANES - 1).astype(int) == z]
 
+    blank_mask = df["gene"].str.lower().str.startswith("blank")
+    df = df[~blank_mask]
+
     if genes is not None:
         df = df[df["gene"].isin(set(genes))]
 

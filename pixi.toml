@@ -18,10 +18,10 @@ scipy = ">=1.10"
 tifffile = ">=2023.1"
 hatchling = ">=1.18"
 git-cliff = ">=2.0"
-napari = ">=0.5"
-pyqt6 = ">=6.0"
+napari = "*"
+pyqt6 = "*"
 dask = ">=2024.1"
 zarr = ">=3.0"
 
 [pypi-dependencies]
-spot-fiction = { path = ".", editable = true }
+# spot-fiction = { path = ".", editable = true }

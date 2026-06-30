@@ -67,6 +67,10 @@ def load_transcripts(
     df = pd.read_csv(data_dir / "detected_transcripts.csv", usecols=usecols)
     print(f"  {len(df):,} transcripts", flush=True)
 
+    blank_mask = df["gene"].str.lower().str.startswith("blank")
+    df = df[~blank_mask]
+    print(f"  {len(df):,} after blank removal", flush=True)
+
     if genes is not None:
         df = df[df["gene"].isin(set(genes))]
         print(f"  {len(df):,} after gene filter", flush=True)
