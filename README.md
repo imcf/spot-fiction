@@ -10,8 +10,8 @@ into any MERSCOPE region folder alongside the real DAPI and PolyT channels.
 
 - [pixi](https://pixi.sh) ≥ 0.71
 - Linux x86-64 (other platforms: add to `platforms` in `pixi.toml`)
-- Disk space: ~22 GB temp + ~11 GB output **per z-plane**
-  (~77 GB total for all 7 planes)
+- Disk space: ~33 GB peak temp + ~15 GB output **per z-plane**
+  (~105 GB total for all 7 planes; pyramid adds ~33% over flat)
 
 ## Installation
 
@@ -45,8 +45,10 @@ One BigTIFF per z-plane written into `images/`:
 images/mosaic_Transcripts_z0.tif … z6.tif
 ```
 
-- Format: single-page uint16 BigTIFF, identical dimensions to DAPI/PolyT
-- Values: Gaussian-blurred transcript counts, normalized to full uint16 range
+- Format: pyramidal OME-TIFF (tiled 512×512, LZW, multi-resolution)
+- Dtype: uint16, normalized to full [0, 65535] range per z-plane
+- Sub-resolutions: 2× block-mean downsample at each level, down to < 256 px
+- OME-XML encodes channel name and physical pixel size (µm)
 - `manifest.json` is updated automatically with the new stain entries
 
 ## Usage
@@ -103,14 +105,21 @@ pixi run changelog   # writes CHANGELOG.md via git-cliff
    at a time with 3σ overlap padding). `scipy.ndimage.gaussian_filter`
    smooths each strip; the padded borders prevent edge artefacts.
 
-5. **Normalization** — the full float32 density map is written to a temporary
-   numpy memmap (`~22 GB`), the global maximum is computed, and the result
-   is linearly scaled to `[0, 65535]` uint16.
+5. **Normalization** — the full float32 density map (~22 GB temp memmap) is
+   linearly scaled to `[0, 65535]` uint16 into a second temp memmap (~11 GB).
+   The float32 temp is deleted at this point.
 
-6. **Output** — a single-page uint16 BigTIFF is created via `tifffile.memmap`,
-   matching the format of the original mosaic files. The temp file is deleted.
+6. **Pyramid** — sub-resolution levels are built by 2× block-mean
+   downsampling. Levels > 2 GB use temp numpy memmaps; smaller levels are
+   held in RAM. Downsampling stops when both dimensions drop below 256 px
+   (typically ~10 levels for this dataset).
 
-7. **Manifest** — `images/manifest.json` is updated with the new stain entries
+7. **Output** — all levels are written as a single tiled (512×512), LZW-
+   compressed pyramidal OME-TIFF via tifffile. OME-XML embeds the channel
+   name and physical pixel size. Final file ~15 GB per z-plane. All temp
+   files are deleted.
+
+8. **Manifest** — `images/manifest.json` is updated with the new stain entries
    so downstream tools (e.g. [SOPA](https://github.com/gustaveroussy/sopa),
    [napari](https://napari.org)) discover the channel automatically.
 
