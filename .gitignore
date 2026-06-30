@@ -1,0 +1,8 @@
+.pixi/
+*.egg-info/
+__pycache__/
+*.py[cod]
+dist/
+build/
+.env
+*.density.bin
