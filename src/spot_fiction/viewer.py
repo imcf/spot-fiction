@@ -150,7 +150,7 @@ def launch(
             name="transcripts",
             size=2,
             face_color="cyan",
-            edge_color="transparent",
+            border_color="transparent",
             opacity=0.6,
             scale=scale,
         )
@@ -164,7 +164,7 @@ def launch(
                 name=gene,
                 size=2,
                 face_color=color,
-                edge_color="transparent",
+                border_color="transparent",
                 opacity=0.7,
                 scale=scale,
             )
