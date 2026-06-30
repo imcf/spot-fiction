@@ -23,7 +23,7 @@ from .core import Z_PLANES, load_manifest, load_transcripts, process_z, update_m
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        prog="fake-transcript-density-channel",
+        prog="spot-fiction",
         description=(
             "Synthesize a transcript density channel for a MERSCOPE region. "
             "Reads detected_transcripts.csv and the affine transform from "
