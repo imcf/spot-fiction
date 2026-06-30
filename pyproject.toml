@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spot-fiction"
+version = "0.1.0"
+description = "Synthesize transcript density channels for MERSCOPE/VIZGEN datasets"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Laurent Guerard", email = "laurent.guerard@unibas.ch" }]
+dependencies = []
+
+[project.scripts]
+spot-fiction = "spot_fiction.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spot_fiction"]
