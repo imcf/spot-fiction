@@ -93,10 +93,16 @@ def main() -> None:
 
     df = load_transcripts(data_dir, img_dir, args.genes)
 
+    pixel_size_um: float = manifest.get("microns_per_pixel", 0.108)
+
     for z in z_list:
         z_df = df[df["pz"] == z]
         out_path = img_dir / f"mosaic_{args.name}_z{z}.tif"
-        process_z(z_df, z, args.sigma, out_path, height, width)
+        process_z(
+            z_df, z, args.sigma, out_path, height, width,
+            channel_name=args.name,
+            pixel_size_um=pixel_size_um,
+        )
 
     update_manifest(img_dir, args.name, z_list)
     print("Done.")
