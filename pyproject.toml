@@ -13,6 +13,7 @@ dependencies = []
 
 [project.scripts]
 spot-fiction = "spot_fiction.cli:main"
+spot-fiction-view = "spot_fiction.viewer:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/spot_fiction"]
