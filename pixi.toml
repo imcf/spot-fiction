@@ -19,6 +19,7 @@ tifffile = ">=2023.1"
 hatchling = ">=1.18"
 git-cliff = ">=2.0"
 napari = ">=0.5"
+pyqt6 = ">=6.0"
 dask = ">=2024.1"
 zarr = ">=3.0"
 
