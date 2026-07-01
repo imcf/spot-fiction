@@ -52,12 +52,10 @@ def _load_transcripts(
     img_dir: Path,
     z: int,
     genes: list[str] | None,
-    max_points: int,
 ) -> pd.DataFrame:
     """
     Load detected_transcripts.csv for a single z-plane.
-    Returns DataFrame with px, py, gene columns.
-    Subsamples to max_points if needed.
+    Returns DataFrame with px, py, gene columns — every transcript at that z.
     """
     usecols = ["global_x", "global_y", "global_z", "gene"]
     print("Loading transcripts…", flush=True)
@@ -84,29 +82,25 @@ def _load_transcripts(
 
     print(f"  {len(df):,} transcripts at z={z}", flush=True)
 
-    if len(df) > max_points:
-        df = df.sample(max_points, random_state=42)
-        print(f"  subsampled to {max_points:,}", flush=True)
-
     return df[["px", "py", "gene"]].reset_index(drop=True)
 
 
-def launch(
+def open_image(
     data_dir: Path,
     z: int = 3,
     stain: str = "Transcripts",
-    genes: list[str] | None = None,
-    max_points: int = 500_000,
-) -> None:
+) -> tuple["napari.Viewer", tuple[float, float]]:
     """
-    Open napari with the density image and transcript point overlay.
+    Open napari with just the density image (no transcripts).
 
     Parameters:
-        data_dir:   MERSCOPE region directory.
-        z:          Z-plane index (0-6).
-        stain:      Stain name used in mosaic filename (default: Transcripts).
-        genes:      Gene names to show as points (None = all, subsampled).
-        max_points: Max transcripts to display (subsampled randomly if exceeded).
+        data_dir: MERSCOPE region directory.
+        z:        Z-plane index (0-6).
+        stain:    Stain name used in mosaic filename (default: Transcripts).
+
+    Returns:
+        (viewer, scale): the viewer and the (row, col) µm scale, needed by
+        `add_transcripts` to keep points aligned with the image.
     """
     import napari
 
@@ -115,7 +109,6 @@ def launch(
     px_um: float = manifest.get("microns_per_pixel", 0.108)
     scale = (px_um, px_um)  # (row, col) scale in µm
 
-    # ── Image ──────────────────────────────────────────────────────────────
     tif_path = img_dir / f"mosaic_{stain}_z{z}.tif"
     if not tif_path.exists():
         raise FileNotFoundError(
@@ -126,17 +119,7 @@ def launch(
     pyramid = _load_pyramid_lazy(tif_path)
     print(f"  {len(pyramid)} resolution levels", flush=True)
 
-    # ── Transcripts ─────────────────────────────────────────────────────────
-    df = _load_transcripts(data_dir, img_dir, z, genes, max_points)
-
-    # napari points are (row, col) = (y, x) = (py, px)
-    all_coords = df[["py", "px"]].to_numpy(dtype=float)
-    gene_list = df["gene"].to_numpy()
-    unique_genes = sorted(df["gene"].unique())
-
-    # ── Viewer ──────────────────────────────────────────────────────────────
     viewer = napari.Viewer(title=f"spot-fiction · {stain} z={z}")
-
     viewer.add_image(
         pyramid,
         multiscale=True,
@@ -145,13 +128,41 @@ def launch(
         scale=scale,
         blending="additive",
     )
+    return viewer, scale
+
+
+def add_transcripts(
+    viewer: "napari.Viewer",
+    scale: tuple[float, float],
+    data_dir: Path,
+    z: int = 3,
+    genes: list[str] | None = None,
+) -> None:
+    """
+    Load detected_transcripts.csv and add it to `viewer` as point layer(s).
+    Shows every transcript at the given z-plane (no subsampling).
+
+    Parameters:
+        viewer:   Viewer returned by `open_image`.
+        scale:    Scale returned by `open_image` (keeps points aligned to image).
+        data_dir: MERSCOPE region directory.
+        z:        Z-plane index (0-6). Must match the one used in `open_image`.
+        genes:    Gene names to show as points (None = all).
+    """
+    img_dir = data_dir / "images"
+    df = _load_transcripts(data_dir, img_dir, z, genes)
+
+    # napari points are (row, col) = (y, x) = (py, px)
+    all_coords = df[["py", "px"]].to_numpy(dtype=float)
+    gene_list = df["gene"].to_numpy()
+    unique_genes = sorted(df["gene"].unique())
 
     if len(unique_genes) == 1 or genes is None:
         # Single layer — all points same color
         viewer.add_points(
             all_coords,
             name="transcripts",
-            size=2,
+            size=4,
             face_color="cyan",
             border_color="transparent",
             opacity=0.6,
@@ -165,7 +176,7 @@ def launch(
             viewer.add_points(
                 all_coords[mask],
                 name=gene,
-                size=2,
+                size=4,
                 face_color=color,
                 border_color="transparent",
                 opacity=0.7,
@@ -176,6 +187,27 @@ def launch(
         f"napari ready — {len(unique_genes)} gene(s), {len(df):,} points",
         flush=True,
     )
+
+
+def launch(
+    data_dir: Path,
+    z: int = 3,
+    stain: str = "Transcripts",
+    genes: list[str] | None = None,
+) -> None:
+    """
+    Open napari with the density image and transcript point overlay.
+
+    Parameters:
+        data_dir: MERSCOPE region directory.
+        z:        Z-plane index (0-6).
+        stain:    Stain name used in mosaic filename (default: Transcripts).
+        genes:    Gene names to show as points (None = all).
+    """
+    import napari
+
+    viewer, scale = open_image(data_dir, z=z, stain=stain)
+    add_transcripts(viewer, scale, data_dir, z=z, genes=genes)
     napari.run()
 
 
@@ -192,11 +224,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--genes", nargs="*", default=None, metavar="GENE",
-        help="Show only these genes as colored layers (default: all, subsampled)",
-    )
-    p.add_argument(
-        "--max-points", type=int, default=500_000, metavar="N",
-        help="Max transcript points to display (default: 500000)",
+        help="Show only these genes as colored layers (default: all)",
     )
     return p.parse_args()
 
@@ -208,5 +236,4 @@ def main() -> None:
         z=args.z,
         stain=args.stain,
         genes=args.genes,
-        max_points=args.max_points,
     )
