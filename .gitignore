@@ -6,3 +6,4 @@ dist/
 build/
 .env
 *.density.bin
+.ipynb_checkpoints/
